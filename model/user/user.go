@@ -58,6 +58,19 @@ func (u *User) LoadInfoByAccountAndPassword(account, password string) error {
 	return nil
 }
 
+// 通过账号密码加载用户信息
+func (u *User) LoadInfoByToken(token string) error {
+	if err := u.Account.loadByToken(token); err != nil {
+		return err
+	}
+
+	if err := u.Info.loadByAccountToken(token); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // 存储信息
 func (u *User) Store() error {
 	if err := u.Account.Store(); err != nil {
@@ -81,6 +94,23 @@ func (a *Account) loadByAccountAndPassword(account, password string) error {
 	defer mysqlConn.Close()
 
 	row := mysqlConn.QueryRowContext(context.Background(), "select * from `jarvis`.`dynamic_account` where account = ? and password = ?", account, password)
+	if err := row.Scan(&a.ID, &a.Token, &a.Account, &a.Password, &a.AccountType, &a.Platform); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// 通过 token 加载账号信息
+func (a *Account) loadByToken(token string) error {
+	// 获取 MySQL 连接
+	mysqlConn, err := database.GetMySQLConn()
+	if err != nil {
+		return err
+	}
+	defer mysqlConn.Close()
+
+	row := mysqlConn.QueryRowContext(context.Background(), "select * from `jarvis`.`dynamic_account` where token = ?", token)
 	if err := row.Scan(&a.ID, &a.Token, &a.Account, &a.Password, &a.AccountType, &a.Platform); err != nil {
 		return err
 	}
@@ -147,6 +177,43 @@ func (i *Info) Store(token string) error {
 	_, err = mysqlConn.ExecContext(context.Background(), "insert into `jarvis`.`dynamic_userInfo`(account_token, name) values (?,?)",
 		token,
 		i.Name)
+
+	return err
+}
+
+// 通过 token 修改账号信息
+func (i *Info) Update() error {
+	// 获取 MySQL 连接
+	mysqlConn, err := database.GetMySQLConn()
+	if err != nil {
+		return err
+	}
+	defer mysqlConn.Close()
+
+	_, err = mysqlConn.ExecContext(context.Background(), "update `jarvis`.`dynamic_userInfo` set name = ? , age = ? , sex = ? , head_image = ? , game_bg_music_volume = ? , game_effect_volume = ? where account_token = ?",
+		i.Name,
+		i.Age,
+		i.Sex,
+		i.HeadImage,
+		i.GameBgMusicVolume,
+		i.GameEffectVolume,
+		i.AccountToken)
+
+	return err
+}
+
+// 通过 token 修改账号信息
+func (i *Info) UpdateAccountBalance() error {
+	// 获取 MySQL 连接
+	mysqlConn, err := database.GetMySQLConn()
+	if err != nil {
+		return err
+	}
+	defer mysqlConn.Close()
+
+	_, err = mysqlConn.ExecContext(context.Background(), "update `jarvis`.`dynamic_userInfo` set account_balance = ? where account_token = ?",
+		i.AccountBalance,
+		i.AccountToken)
 
 	return err
 }
