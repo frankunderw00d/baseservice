@@ -202,7 +202,7 @@ func (i *Info) Update() error {
 	return err
 }
 
-// 通过 token 修改账号信息
+// 通过 token 修改账号余额
 func (i *Info) UpdateAccountBalance() error {
 	// 获取 MySQL 连接
 	mysqlConn, err := database.GetMySQLConn()
