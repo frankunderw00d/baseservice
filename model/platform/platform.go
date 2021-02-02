@@ -4,10 +4,8 @@ package platform
 import (
 	"baseservice/base/basic"
 	"encoding/json"
-	"errors"
 	"fmt"
-	redisGo "github.com/gomodule/redigo/redis"
-	"jarvis/base/database"
+	"jarvis/base/database/redis"
 	"time"
 )
 
@@ -47,13 +45,7 @@ func (pl PlatformList) QueryOrder() string {
 
 // 根据 id 查询平台信息
 func QueryPlatformInfoByID(id string) (Platform, error) {
-	conn, err := database.GetRedisConn()
-	if err != nil {
-		return Platform{}, err
-	}
-	defer conn.Close()
-
-	str, err := redisGo.String(conn.Do("hget", DefaultPlatformKey.String(), DefaultPlatformFieldPrefix.Compose(id)))
+	str, err := redis.HGet(DefaultPlatformKey.String(), DefaultPlatformFieldPrefix.Compose(id))
 	if err != nil {
 		return Platform{}, err
 	}
@@ -68,30 +60,15 @@ func QueryPlatformInfoByID(id string) (Platform, error) {
 
 // 查询所有平台信息
 func QueryAllPlatformInfo() ([]Platform, error) {
-	conn, err := database.GetRedisConn()
+	reply, err := redis.HGetAll(DefaultPlatformKey.String())
 	if err != nil {
 		return nil, err
-	}
-	defer conn.Close()
-
-	reply, err := conn.Do("hgetall", DefaultPlatformKey.String())
-	if err != nil {
-		return nil, err
-	}
-
-	bytesList, ok := reply.([]interface{})
-	if !ok {
-		return nil, errors.New("return type error")
 	}
 
 	platforms := make([]Platform, 0)
-	for index, data := range bytesList {
-		if index%2 == 0 {
-			continue
-		}
-
+	for _, v := range reply {
 		platform := Platform{}
-		if err := json.Unmarshal(data.([]byte), &platform); err != nil {
+		if err := json.Unmarshal([]byte(v), &platform); err != nil {
 			return nil, err
 		}
 		platforms = append(platforms, platform)
@@ -102,13 +79,7 @@ func QueryAllPlatformInfo() ([]Platform, error) {
 
 // 设置平台信息到 Redis 的哈希表中，key 为 DefaultPlatformKey
 func HSetPlatformInfoByID(id string, value string) error {
-	conn, err := database.GetRedisConn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	_, err = redisGo.Int(conn.Do("hset", DefaultPlatformKey.String(), DefaultPlatformFieldPrefix.Compose(id), value))
+	_, err := redis.HSet(DefaultPlatformKey.String(), DefaultPlatformFieldPrefix.Compose(id), value)
 	if err != nil {
 		return err
 	}
@@ -118,13 +89,7 @@ func HSetPlatformInfoByID(id string, value string) error {
 
 // 验证平台id是否存在
 func HExistsPlatformByID(id string) bool {
-	conn, err := database.GetRedisConn()
-	if err != nil {
-		return false
-	}
-	defer conn.Close()
-
-	reply, err := redisGo.Int(conn.Do("hexists", DefaultPlatformKey.String(), DefaultPlatformFieldPrefix.Compose(id)))
+	reply, err := redis.HExists(DefaultPlatformKey.String(), DefaultPlatformFieldPrefix.Compose(id))
 	if err != nil {
 		return false
 	}

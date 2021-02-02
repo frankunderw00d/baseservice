@@ -3,8 +3,7 @@ package session
 import (
 	"baseservice/base/basic"
 	"errors"
-	redisGo "github.com/gomodule/redigo/redis"
-	"jarvis/base/database"
+	"jarvis/base/database/redis"
 	uRand "jarvis/util/rand"
 	"strings"
 	"time"
@@ -19,15 +18,8 @@ const (
 
 // 设置 Session
 func SetSession(token, session string) error {
-	// 获取 Redis 连接
-	redisConn, err := database.GetRedisConn()
-	if err != nil {
-		return err
-	}
-	defer redisConn.Close()
-
 	now := time.Now().Format("20060102150405")
-	_, err = redisConn.Do("hset", UsersSessionKey, UsersSessionField.Compose(token), session+":"+now)
+	_, err := redis.HSet(UsersSessionKey, UsersSessionField.Compose(token), session+":"+now)
 	if err != nil {
 		return err
 	}
@@ -37,14 +29,7 @@ func SetSession(token, session string) error {
 
 // 获取 Session
 func GetSession(token string) (string, error) {
-	// 获取 Redis 连接
-	redisConn, err := database.GetRedisConn()
-	if err != nil {
-		return "", err
-	}
-	defer redisConn.Close()
-
-	v, err := redisGo.String(redisConn.Do("hget", UsersSessionKey, UsersSessionField.Compose(token)))
+	v, err := redis.HGet(UsersSessionKey, UsersSessionField.Compose(token))
 	if err != nil {
 		return "", err
 	}
@@ -54,14 +39,7 @@ func GetSession(token string) (string, error) {
 
 // Session 是否超时，默认15分钟
 func CheckSessionTimeout(token string) (bool, error) {
-	// 获取 Redis 连接
-	redisConn, err := database.GetRedisConn()
-	if err != nil {
-		return false, err
-	}
-	defer redisConn.Close()
-
-	v, err := redisGo.String(redisConn.Do("hget", UsersSessionKey, UsersSessionField.Compose(token)))
+	v, err := redis.HGet(UsersSessionKey, UsersSessionField.Compose(token))
 	if err != nil {
 		return false, err
 	}
