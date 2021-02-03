@@ -1,7 +1,7 @@
 package authenticate
 
 import (
-	"baseservice/base/session"
+	"baseservice/common/session"
 	"encoding/json"
 	"jarvis/base/network"
 	"log"
