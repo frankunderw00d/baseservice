@@ -2,18 +2,22 @@ package user
 
 import (
 	"context"
+	"database/sql"
 	"jarvis/base/database"
+	"time"
 )
 
 type (
 	// 账号信息 `dynamic_account`
 	Account struct {
-		ID          int    `json:"id"`       // 账号 id
-		Token       string `json:"token"`    // 令牌(唯一)
-		Account     string `json:"account"`  // 登录账号名
-		Password    string `json:"password"` // 登录密码
-		AccountType int    `json:"type"`     // 账号类型 0-游客 1-绑定用户
-		Platform    int    `json:"platform"` // 所属平台
+		ID          int       `json:"id"`          // 账号 id
+		Token       string    `json:"token"`       // 令牌(唯一)
+		Account     string    `json:"account"`     // 登录账号名
+		Password    string    `json:"password"`    // 登录密码
+		AccountType int       `json:"type"`        // 账号类型 0-游客 1-绑定用户
+		Platform    int       `json:"platform"`    // 所属平台
+		LastLogin   time.Time `json:"last_login"`  // 上次登录时间
+		LastLogout  time.Time `json:"last_logout"` // 上次登出时间
 	}
 
 	// 用户信息 `dynamic_userInfo`
@@ -93,10 +97,15 @@ func (a *Account) loadByAccountAndPassword(account, password string) error {
 	}
 	defer mysqlConn.Close()
 
+	var lastLogin sql.NullTime
+	var lastLogout sql.NullTime
 	row := mysqlConn.QueryRowContext(context.Background(), "select * from `jarvis`.`dynamic_account` where account = ? and password = ?", account, password)
-	if err := row.Scan(&a.ID, &a.Token, &a.Account, &a.Password, &a.AccountType, &a.Platform); err != nil {
+	if err := row.Scan(&a.ID, &a.Token, &a.Account, &a.Password, &a.AccountType, &a.Platform, &lastLogin, &lastLogout); err != nil {
 		return err
 	}
+
+	a.LastLogin = lastLogin.Time
+	a.LastLogout = lastLogout.Time
 
 	return nil
 }
@@ -110,10 +119,15 @@ func (a *Account) loadByToken(token string) error {
 	}
 	defer mysqlConn.Close()
 
+	var lastLogin sql.NullTime
+	var lastLogout sql.NullTime
 	row := mysqlConn.QueryRowContext(context.Background(), "select * from `jarvis`.`dynamic_account` where token = ?", token)
-	if err := row.Scan(&a.ID, &a.Token, &a.Account, &a.Password, &a.AccountType, &a.Platform); err != nil {
+	if err := row.Scan(&a.ID, &a.Token, &a.Account, &a.Password, &a.AccountType, &a.Platform, &lastLogin, &lastLogout); err != nil {
 		return err
 	}
+
+	a.LastLogin = lastLogin.Time
+	a.LastLogout = lastLogout.Time
 
 	return nil
 }
@@ -133,6 +147,38 @@ func (a *Account) Store() error {
 		a.Password,
 		a.AccountType,
 		a.Platform)
+
+	return err
+}
+
+// 存入登录时间
+func (a *Account) StoreLoginTime() error {
+	// 获取 MySQL 连接
+	mysqlConn, err := database.GetMySQLConn()
+	if err != nil {
+		return err
+	}
+	defer mysqlConn.Close()
+
+	_, err = mysqlConn.ExecContext(context.Background(), "update `jarvis`.`dynamic_account` set last_login = ? where token = ?",
+		a.LastLogin,
+		a.Token)
+
+	return err
+}
+
+// 存入登出时间
+func (a *Account) StoreLogoutTime() error {
+	// 获取 MySQL 连接
+	mysqlConn, err := database.GetMySQLConn()
+	if err != nil {
+		return err
+	}
+	defer mysqlConn.Close()
+
+	_, err = mysqlConn.ExecContext(context.Background(), "update `jarvis`.`dynamic_account` set last_logout = ? where token = ?",
+		a.LastLogout,
+		a.Token)
 
 	return err
 }
