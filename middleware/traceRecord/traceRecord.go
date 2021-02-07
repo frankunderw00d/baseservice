@@ -8,6 +8,7 @@ import (
 	"jarvis/base/database"
 	"jarvis/base/network"
 	"log"
+	"time"
 )
 
 type (
@@ -116,6 +117,7 @@ func record(module, route, reply, id, data string, recordType RecordType, token,
 		RecordTokenField:     token,
 		RecordSessionField:   session,
 		RecordSecretKeyField: secretKey,
+		"time":               time.Now().Format("2006-01-02 15:04:05"),
 	})
 	if err != nil {
 		return err

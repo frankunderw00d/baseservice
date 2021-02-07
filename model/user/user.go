@@ -18,6 +18,8 @@ type (
 		Platform    int       `json:"platform"`    // 所属平台
 		LastLogin   time.Time `json:"last_login"`  // 上次登录时间
 		LastLogout  time.Time `json:"last_logout"` // 上次登出时间
+		CreateAt    time.Time `json:"create_at"`   // 创建时间
+		UpdateAt    time.Time `json:"update_at"`   // 上次修改时间
 	}
 
 	// 用户信息 `dynamic_userInfo`
@@ -99,13 +101,17 @@ func (a *Account) loadByAccountAndPassword(account, password string) error {
 
 	var lastLogin sql.NullTime
 	var lastLogout sql.NullTime
+	var createAt sql.NullTime
+	var updateAt sql.NullTime
 	row := mysqlConn.QueryRowContext(context.Background(), "select * from `jarvis`.`dynamic_account` where account = ? and password = ?", account, password)
-	if err := row.Scan(&a.ID, &a.Token, &a.Account, &a.Password, &a.AccountType, &a.Platform, &lastLogin, &lastLogout); err != nil {
+	if err := row.Scan(&a.ID, &a.Token, &a.Account, &a.Password, &a.AccountType, &a.Platform, &lastLogin, &lastLogout, &createAt, &updateAt); err != nil {
 		return err
 	}
 
 	a.LastLogin = lastLogin.Time
 	a.LastLogout = lastLogout.Time
+	a.CreateAt = createAt.Time
+	a.UpdateAt = updateAt.Time
 
 	return nil
 }
@@ -121,13 +127,17 @@ func (a *Account) loadByToken(token string) error {
 
 	var lastLogin sql.NullTime
 	var lastLogout sql.NullTime
+	var createAt sql.NullTime
+	var updateAt sql.NullTime
 	row := mysqlConn.QueryRowContext(context.Background(), "select * from `jarvis`.`dynamic_account` where token = ?", token)
-	if err := row.Scan(&a.ID, &a.Token, &a.Account, &a.Password, &a.AccountType, &a.Platform, &lastLogin, &lastLogout); err != nil {
+	if err := row.Scan(&a.ID, &a.Token, &a.Account, &a.Password, &a.AccountType, &a.Platform, &lastLogin, &lastLogout, &createAt, &updateAt); err != nil {
 		return err
 	}
 
 	a.LastLogin = lastLogin.Time
 	a.LastLogout = lastLogout.Time
+	a.CreateAt = createAt.Time
+	a.UpdateAt = updateAt.Time
 
 	return nil
 }
